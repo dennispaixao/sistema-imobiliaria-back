@@ -39,7 +39,7 @@ const createNewUser = async (req, res) => {
   if (!username || !password) {
     return res.status(400).json({ message: "All fields are required" });
   }
-
+  console.log(username, password);
   //check lengths
   const usernamelength = username.length;
   const passwordlength = username.length;
@@ -58,15 +58,16 @@ const createNewUser = async (req, res) => {
 
   //chek if equals username
 
-  if (duplicate) {
-    return res.status(409).json({ message: "Duplicate username" });
-  }
-
   // Check for duplicate username
-  const duplicate = await User.findOne({ username })
+  let duplicate;
+  duplicate = await User.findOne({ username })
     .collation({ locale: "en", strength: 2 })
     .lean()
     .exec();
+  console.log(duplicate);
+  if (duplicate) {
+    return res.status(409).json({ message: "Duplicate username" });
+  }
 
   if (duplicate) {
     return res.status(409).json({ message: "Duplicate username" });
@@ -118,11 +119,12 @@ const updateUser = async (req, res) => {
     return res.status(400).json({ message: "User not found" });
   }
 
-  // Check for duplicate
-  const duplicate = await User.findOne({ username })
+  let duplicate;
+  duplicate = await User.findOne({ username })
     .collation({ locale: "en", strength: 2 })
     .lean()
     .exec();
+  console.log(duplicate);
 
   // Allow updates to the original user
   if (duplicate && duplicate?._id.toString() !== id) {

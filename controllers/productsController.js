@@ -8,7 +8,7 @@ const { refresh } = require("./authController");
 const getAllProducts = async (req, res) => {
   try {
     // Obter todos os produtos do MongoDB
-    const products = await Product.find().populate("categories").lean();
+    const products = await Product.find().populate("user").lean();
 
     // Se não encontrar produtos
     if (!products?.length) {
@@ -84,11 +84,10 @@ const createNewProduct = async (req, res) => {
 // @route PATCH /products
 // @access Private
 const updateProduct = async (req, res) => {
-  const { id, user, title, text, status, price, downpayment, categories } =
-    req.body;
+  const { id, title, text, status, price, downpayment, categories } = req.body;
 
   // Confirm data
-  if (!id || !user || !title || !text) {
+  if (!id || !title || !text) {
     return res.status(400).json({ message: "All  fields are required" });
   }
 
@@ -102,10 +101,9 @@ const updateProduct = async (req, res) => {
   // Check for duplicate title
   // Removed
 
-  product.user = user;
   product.title = title;
+  product.status = status;
   product.text = text;
-  product.completed = completed;
   product.downpayment = downpayment;
   product.price = price;
   product.categories = categories;
@@ -113,6 +111,7 @@ const updateProduct = async (req, res) => {
   const updatedProduct = await product.save();
 
   res.json(`'${updatedProduct.title}' updated`);
+  console.log(`'${updatedProduct.title}' updated`);
 };
 
 // @desc Delete a product

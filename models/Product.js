@@ -20,10 +20,10 @@ const productSchema = new mongoose.Schema(
       required: true,
     },
     price: {
-      type: mongoose.Schema.Types.Decimal128,
+      type: String,
     },
     downpayment: {
-      type: mongoose.Schema.Types.Decimal128,
+      type: String,
     },
     status: {
       type: Number, //0 excluido 1 à venda 2 vendido
