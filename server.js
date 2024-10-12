@@ -32,6 +32,7 @@ app.use("/auth", require("./routes/authRoutes"));
 app.use("/users", require("./routes/userRoutes"));
 app.use("/products", require("./routes/productRoutes"));
 app.use("/categories", require("./routes/categorieRoutes"));
+app.use("/upload", require("./routes/imagesRoutes"));
 
 app.all("*", (req, res) => {
   res.status(404);

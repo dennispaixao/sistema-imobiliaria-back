@@ -11,37 +11,30 @@ const getAllProducts = async (req, res) => {
     const products = await Product.find().populate("user").lean();
 
     // Se não encontrar produtos
-    if (!products?.length) {
+    if (!products.length) {
       return res.status(400).json({ message: "No products found" });
     }
 
     // Adicionar o nome de usuário a cada produto antes de enviar a resposta
-    let productsWithUser = await Promise.all(
+    const productsWithUser = await Promise.all(
       products.map(async (product) => {
         try {
-          const user = await User.find(req.user).lean().exec();
-          console.log(user);
-          if (user.username) {
-            console.log("ops");
-            return { ...product, username: user.username };
-          } else {
-            const { user, ...productWithoutUser } = product;
-            console.log(productWithoutUser);
-            return { ...productWithoutUser };
-          }
+          const user = await User.findById(product.user).lean().exec();
+          return { ...product, username: user?.username || "Unknown" };
         } catch (error) {
           console.error(
             `Error fetching user for product ${product._id}:`,
             error
           );
+          return { ...product, username: "Unknown" }; // Usar "Unknown" se o usuário não puder ser encontrado
         }
       })
     );
 
-    res.json(productsWithUser);
+    return res.json(productsWithUser);
   } catch (error) {
     console.error("Error fetching products:", error);
-    res
+    return res
       .status(500)
       .json({ message: "An error occurred while fetching products" });
   }
@@ -51,35 +44,47 @@ const getAllProducts = async (req, res) => {
 // @route POST /products
 // @access Private
 const createNewProduct = async (req, res) => {
-  const { user, title, text, status, price, downpayment, categories } =
+  const { user, title, text, status, price, downpayment, categories, images } =
     req.body;
-
-  // Confirm data
-  if (!user || !title || !text || !status) {
-    return res
-      .status(400)
-      .json({ message: "user, title, text, status required" });
+  if (images.length) {
+    console.log(JSON.stringify(images) + "aqwuiiii");
+  } else {
+    console.log("sem image" + images);
   }
 
-  // Create and store the new user
-  const product = await Product.create({
-    user,
-    title,
-    text,
-    price,
-    downpayment,
-    status,
-    categories,
-  });
+  // Confirm data
+  if (!title || !text || !status || !user) {
+    return res
+      .status(400)
+      .json({ message: "title, text, status, and user are required" });
+  }
 
-  if (product) {
-    // Created
-    return res.status(201).json({ message: "New product created" });
-  } else {
+  // Confirm that images is an array of strings
+  if (!Array.isArray(images)) {
+    return res
+      .status(400)
+      .json({ message: "images must be an array of strings" });
+  }
+
+  // Create and store the new product
+  try {
+    const product = await Product.create({
+      user, // Certifique-se de que este valor está correto
+      title,
+      text,
+      price,
+      downpayment,
+      status,
+      categories,
+      images,
+    });
+
+    return res.status(201).json({ message: "New product created", product });
+  } catch (error) {
+    console.error("Error creating product:", error);
     return res.status(400).json({ message: "Invalid product data received" });
   }
 };
-
 // @desc Update a product
 // @route PATCH /products
 // @access Private
@@ -88,7 +93,7 @@ const updateProduct = async (req, res) => {
 
   // Confirm data
   if (!id || !title || !text) {
-    return res.status(400).json({ message: "All  fields are required" });
+    return res.status(400).json({ message: "All fields are required" });
   }
 
   // Confirm product exists to update
@@ -98,9 +103,7 @@ const updateProduct = async (req, res) => {
     return res.status(400).json({ message: "Product not found" });
   }
 
-  // Check for duplicate title
-  // Removed
-
+  // Atualizar os campos do produto
   product.title = title;
   product.status = status;
   product.text = text;
@@ -108,10 +111,16 @@ const updateProduct = async (req, res) => {
   product.price = price;
   product.categories = categories;
 
-  const updatedProduct = await product.save();
-
-  res.json(`'${updatedProduct.title}' updated`);
-  console.log(`'${updatedProduct.title}' updated`);
+  try {
+    const updatedProduct = await product.save();
+    return res.json({
+      message: `'${updatedProduct.title}' updated`,
+      product: updatedProduct,
+    });
+  } catch (error) {
+    console.error(`Error updating product '${product.title}':`, error);
+    return res.status(500).json({ message: "Error updating product" });
+  }
 };
 
 // @desc Delete a product
@@ -132,11 +141,15 @@ const deleteProduct = async (req, res) => {
     return res.status(400).json({ message: "Product not found" });
   }
 
-  const result = await product.deleteOne();
-
-  const reply = `Product '${result.title}' with ID ${result._id} deleted`;
-
-  res.json(reply);
+  try {
+    await product.deleteOne();
+    return res.json({
+      message: `Product '${product.title}' with ID ${product._id} deleted`,
+    });
+  } catch (error) {
+    console.error(`Error deleting product '${product.title}':`, error);
+    return res.status(500).json({ message: "Error deleting product" });
+  }
 };
 
 module.exports = {

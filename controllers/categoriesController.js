@@ -10,7 +10,7 @@ const getAllCategories = async (req, res) => {
 
   // Encontra as notas associadas a todos os usuarios
   const categories = await Categorie.find().lean();
-  console.log(categories);
+
   // If no categories
   if (!categories?.length) {
     return res.status(400).json({ message: "No categories found" });

@@ -29,6 +29,9 @@ const productSchema = new mongoose.Schema(
       type: Number, //0 excluido 1 à venda 2 vendido
       required: true,
     },
+    images: {
+      type: [String],
+    },
   },
   {
     timestamps: true,
