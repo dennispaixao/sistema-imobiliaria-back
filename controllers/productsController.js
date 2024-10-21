@@ -89,7 +89,8 @@ const createNewProduct = async (req, res) => {
 // @route PATCH /products
 // @access Private
 const updateProduct = async (req, res) => {
-  const { id, title, text, status, price, downpayment, categories } = req.body;
+  const { id, title, text, status, price, downpayment, categories, images } =
+    req.body;
 
   // Confirm data
   if (!id || !title || !text) {
@@ -110,7 +111,7 @@ const updateProduct = async (req, res) => {
   product.downpayment = downpayment;
   product.price = price;
   product.categories = categories;
-
+  product.images = images;
   try {
     const updatedProduct = await product.save();
     return res.json({

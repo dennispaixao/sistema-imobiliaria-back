@@ -1,9 +1,17 @@
 const multer = require("multer");
+const cloudinary = require("../config/cloudinaryConfig"); // Cloudinary configurado
 const path = require("path");
-const bucket = require("../config/firebaseConfig"); // Firebase storage bucket configurado
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
-// Configuração do multer para receber arquivos
-const storage = multer.memoryStorage();
+// Configuração do multer para receber arquivos e armazená-los diretamente no Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    // Pasta onde as imagens serão armazenadas no Cloudinary
+    format: async (req, file) => path.extname(file.originalname).slice(1), // Mantém a extensão original
+    public_id: (req, file) => `${Date.now()}_${file.originalname}`,
+  },
+});
 const upload = multer({ storage });
 
 // Função para fazer o upload de múltiplas imagens
@@ -14,31 +22,13 @@ const uploadImages = async (req, res) => {
       return res.status(400).send("Nenhuma imagem foi enviada.");
     }
 
+    // Array para armazenar URLs das imagens carregadas
     const uploadedImages = [];
 
-    // Processa cada imagem recebida
+    // Faz o upload de cada imagem para o Cloudinary
     for (const file of req.files) {
-      const blob = bucket.file(`images/${Date.now()}_${file.originalname}`);
-      const blobStream = blob.createWriteStream({
-        metadata: {
-          contentType: file.mimetype,
-        },
-      });
-
-      // Carrega a imagem no Firebase Storage
-      blobStream.end(file.buffer);
-
-      await new Promise((resolve, reject) => {
-        blobStream.on("finish", () => {
-          const publicUrl = `https://storage.googleapis.com/${bucket.name}/${blob.name}`;
-          uploadedImages.push(publicUrl);
-          resolve();
-        });
-        blobStream.on("error", (err) => {
-          console.error("Erro no upload da imagem:", err);
-          reject(err);
-        });
-      });
+      const result = await cloudinary.uploader.upload(file.path);
+      uploadedImages.push(result.secure_url); // Armazena a URL segura da imagem
     }
 
     // Retorna os URLs das imagens carregadas
@@ -49,32 +39,39 @@ const uploadImages = async (req, res) => {
   }
 };
 
+// Função para deletar múltiplas imagens
 const deleteImages = async (req, res) => {
   try {
-    const { imageUrls } = req.body; // Recebe um array de URLs de imagens
+    const { imageUrls } = req.body;
+    console.log(
+      "Images recebidas >>>>>>>>",
+      imageUrls ? imageUrls : "não há imagens"
+    );
 
     if (!imageUrls || imageUrls.length === 0) {
       return res.status(400).send("Nenhuma imagem foi fornecida para deletar.");
     }
 
     const deletedImages = [];
-
-    // Itera sobre o array de URLs e deleta cada imagem
     for (const imageUrl of imageUrls) {
-      // Extrai o nome do arquivo a partir da URL
-      const imageName = imageUrl.split("/").pop();
+      const publicId = imageUrl.split("/").pop().split(".")[0];
+      console.log("publicId extraído >>>>>>>>", publicId);
 
-      if (!imageName) {
-        return res
-          .status(400)
-          .send(`Nome de imagem inválido na URL: ${imageUrl}`);
+      try {
+        // Adicionando a invalidação do cache
+        const result = await cloudinary.api.delete_resources([publicId], {
+          invalidate: true,
+        });
+        console.log(`Resultado da exclusão da imagem ${publicId}:`, result);
+
+        if (result.result === "ok") {
+          deletedImages.push(publicId);
+        } else {
+          console.error(`Erro ao deletar imagem: ${imageUrl}`, result);
+        }
+      } catch (deleteError) {
+        console.error("Erro ao deletar a imagem:", deleteError);
       }
-
-      const file = bucket.file(`images/${imageName}`);
-
-      // Deletar o arquivo do Firebase Storage
-      await file.delete();
-      deletedImages.push(imageName);
     }
 
     res.status(200).send({
@@ -87,5 +84,5 @@ const deleteImages = async (req, res) => {
   }
 };
 
-// Exporta a função deleteImages
+// Exporta as funções
 module.exports = { upload, uploadImages, deleteImages };
