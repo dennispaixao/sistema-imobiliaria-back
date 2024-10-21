@@ -8,7 +8,10 @@ const { refresh } = require("./authController");
 const getAllProducts = async (req, res) => {
   try {
     // Obter todos os produtos do MongoDB
-    const products = await Product.find().populate("user").lean();
+    const products = await Product.find()
+      .populate("user")
+      .populate("categories")
+      .lean();
 
     // Se não encontrar produtos
     if (!products.length) {
