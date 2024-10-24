@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+require("dotenv").config();
 
 // @desc Login
 // @route POST /auth
@@ -41,10 +42,10 @@ const login = async (req, res) => {
 
   // Create secure cookie with refresh token
   res.cookie("jwt", refreshToken, {
-    httpOnly: true, //accessible only by web server
-    secure: false, //https
-    sameSite: "Lax", //cross-site cookie
-    maxAge: 7 * 24 * 60 * 60 * 1000, //cookie expiry: set to match rT
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "development" ? false : true,
+    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 
   // Send accessToken containing username and roles
@@ -102,7 +103,11 @@ const logout = (req, res) => {
   req.user = undefined;
   const cookies = req.cookies;
   if (!cookies?.jwt) return res.sendStatus(204); //No content
-  res.clearCookie("jwt", { httpOnly: true, sameSite: "None", secure: false });
+  res.clearCookie("jwt", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "development" ? false : true,
+    sameSite: process.env.NODE_ENV === "development" ? "lax" : "none",
+  });
   res.json({ message: "Cookie cleared" });
 };
 
